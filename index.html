@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Drawstring</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    #splashScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.5s ease;
+    }
+
+    #splashScreen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash-content {
+      text-align: center;
+      color: white;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      max-width: 400px;
+    }
+
+    .splash-content h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .splash-content p {
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.95;
+      line-height: 1.6;
+    }
+
+    .emoji {
+      font-size: 2rem;
+      margin: 1rem 0;
+    }
+
+    #startButton {
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 1rem 3rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 1rem;
+    }
+
+    #startButton:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    #startButton:active {
+      transform: translateY(0);
+    }
+
+    #headerLabel {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 700;
+      z-index: 100;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.5s forwards;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    #toolbar {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 15px 25px;
+      border-radius: 50px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      opacity: 0;
+      animation: slideUp 0.5s ease 0.5s forwards;
+    }
+
+    @keyframes slideUp {
+      to { opacity: 1; }
+    }
+
+    .tool-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 50%;
+      background: #f0f0f0;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .tool-btn:hover {
+      background: #e0e0e0;
+      transform: scale(1.1);
+    }
+
+    .tool-btn:active {
+      transform: scale(0.95);
+    }
+
+    #colorPicker {
+      width: 44px;
+      height: 44px;
+      border: 3px solid white;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
+    }
+
+    #colorPicker:hover {
+      transform: scale(1.1);
+    }
+
+    #brushSize {
+      width: 100px;
+      height: 6px;
+      -webkit-appearance: none;
+      background: #ddd;
+      border-radius: 3px;
+      outline: none;
+    }
+
+    #brushSize::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #brushSize::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    #brushSize::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+      border: none;
+    }
+
+    .divider {
+      width: 1px;
+      height: 30px;
+      background: #ddd;
+    }
+
+    #brushPreview {
+      position: fixed;
+      pointer-events: none;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      z-index: 99;
+      display: none;
+      transform: translate(-50%, -50%);
+    }
+
+    @media (max-width: 600px) {
+      #toolbar {
+        padding: 12px 20px;
+        gap: 12px;
+      }
+      
+      .tool-btn {
+        width: 40px;
+        height: 40px;
+      }
+      
+      #colorPicker {
+        width: 40px;
+        height: 40px;
+      }
+      
+      #brushSize {
+        width: 80px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="splashScreen">
+    <div class="splash-content">
+      <h1>Drawstring</h1>
+      <p>A simple, beautiful sketchpad</p>
+      <p>Touch or click to draw</p>
+      <p>Double-tap to clear</p>
+      <div class="emoji">✍️🧶</div>
+      <button id="startButton">Start Drawing</button>
+    </div>
+  </div>
+
+  <div id="headerLabel">Drawstring</div>
+  
+  <canvas id="drawingCanvas"></canvas>
+  
+  <div id="brushPreview"></div>
+  
+  <div id="toolbar">
+    <input type="color" id="colorPicker" value="#000000" title="Color">
+    <div class="divider"></div>
+    <input type="range" id="brushSize" min="1" max="50" value="3" title="Brush Size">
+    <div class="divider"></div>
+    <button class="tool-btn" id="undoBtn" title="Undo">↶</button>
+    <button class="tool-btn" id="clearBtn" title="Clear">🗑️</button>
+    <button class="tool-btn" id="downloadBtn" title="Download">⬇️</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('drawingCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const splashScreen = document.getElementById('splashScreen');
+    const colorPicker = document.getElementById('colorPicker');
+    const brushSize = document.getElementById('brushSize');
+    const brushPreview = document.getElementById('brushPreview');
+    
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    
+    let drawing = false;
+    let currentColor = '#000000';
+    let currentBrushSize = 3;
+    let lastX = 0;
+    let lastY = 0;
+    let history = [];
+    let historyStep = -1;
+    let lastTapTime = 0;
+
+    function resizeCanvas() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      canvas.width = width * devicePixelRatio;
+      canvas.height = height * devicePixelRatio;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, width, height);
+      ctx.putImageData(imageData, 0, 0);
+      
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    resizeCanvas();
+    
+    // Initialize with white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width / devicePixelRatio, canvas.height / devicePixelRatio);
+    
+    function saveState() {
+      historyStep++;
+      if (historyStep < history.length) {
+        history.length = historyStep;
+      }
+      history.push(canvas.toDataURL());
+      if (history.length > 20) {
+        history.shift();
+        historyStep--;
+      }
+    }
+
+    function undo() {
+      if (historyStep > 0) {
+        historyStep--;
+        const img = new Image();
+        img.src = history[historyStep];
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width / devicePixelRatio, canvas.height / devicePixelRatio);
+          ctx.drawImage(img, 0, 0);
+        };
+      }
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width / devicePixelRatio, canvas.height / devicePixelRatio);
+      saveState();
+    }
+
+    function downloadCanvas() {
+      const link = document.createElement('a');
+      link.download = `drawstring-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+      ctx.beginPath();
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = currentBrushSize;
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    function startDrawing(e) {
+      drawing = true;
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches ? e.touches[0] : e;
+      lastX = touch.clientX - rect.left;
+      lastY = touch.clientY - rect.top;
+      
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, currentBrushSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = currentColor;
+      ctx.fill();
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches ? e.touches[0] : e;
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      drawLine(lastX, lastY, x, y);
+      
+      lastX = x;
+      lastY = y;
+    }
+
+    function stopDrawing() {
+      if (drawing) {
+        drawing = false;
+        saveState();
+      }
+    }
+
+    function handleDoubleTap(e) {
+      const now = Date.now();
+      const timeSince = now - lastTapTime;
+      
+      if (timeSince < 300) {
+        clearCanvas();
+        e.preventDefault();
+      }
+      
+      lastTapTime = now;
+    }
+
+    function updateBrushPreview(e) {
+      const touch = e.touches ? e.touches[0] : e;
+      brushPreview.style.left = touch.clientX + 'px';
+      brushPreview.style.top = touch.clientY + 'px';
+      brushPreview.style.width = currentBrushSize + 'px';
+      brushPreview.style.height = currentBrushSize + 'px';
+      brushPreview.style.borderColor = currentColor;
+      brushPreview.style.display = 'block';
+    }
+
+    document.getElementById('startButton').addEventListener('click', () => {
+      splashScreen.classList.add('hidden');
+      setTimeout(() => {
+        splashScreen.style.display = 'none';
+      }, 500);
+      saveState();
+    });
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', (e) => {
+      draw(e);
+      updateBrushPreview(e);
+    });
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    canvas.addEventListener('mouseleave', () => {
+      brushPreview.style.display = 'none';
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleDoubleTap(e);
+      startDrawing(e);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      draw(e);
+      updateBrushPreview(e);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      stopDrawing();
+      brushPreview.style.display = 'none';
+    }, { passive: false });
+
+    colorPicker.addEventListener('input', (e) => {
+      currentColor = e.target.value;
+    });
+
+    brushSize.addEventListener('input', (e) => {
+      currentBrushSize = e.target.value;
+    });
+
+    document.getElementById('undoBtn').addEventListener('click', undo);
+    document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+    document.getElementById('downloadBtn').addEventListener('click', downloadCanvas);
+
+    window.addEventListener('resize', resizeCanvas);
+  </script>
+</body>
+</html>
